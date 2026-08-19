@@ -1,0 +1,28 @@
+# NEUROCORE v0.4 - Core Dependencies
+# Python 3.8+
+
+# CLI & UI
+rich==13.7.0
+
+# API & HTTP
+requests==2.31.0
+httpx==0.26.0
+
+# Server Gateway (v0.5)
+fastapi==0.109.0
+uvicorn==0.27.0
+websockets==12.0
+pyyaml==6.0.1
+pydantic==2.5.3
+
+# Audio & Voice (optional, see requirements-voice.txt)
+# Install voice dependencies with: pip install -r requirements-voice.txt
+
+# Development & Testing (optional)
+# pytest==7.4.3
+# pytest-cov==4.1.0
+# black==23.12.1
+# pylint==3.0.3
+
+# Note: SQLite3 is built-in (Python standard library)
+

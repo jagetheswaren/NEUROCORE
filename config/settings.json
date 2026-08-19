@@ -1,0 +1,54 @@
+{
+    "model": "qwen3:8b",
+    "ollama_url": "http://127.0.0.1:11434",
+    "ollama_timeout": 300,
+    "temperature": 0.7,
+    "workspace": "workspace",
+    "command_timeout": 120,
+    "logging_level": "INFO",
+    "server_host": "127.0.0.1",
+    "server_port": 8000,
+    "safe": [
+        "python --version",
+        "pip --version",
+        "dir",
+        "ls",
+        "git status",
+        "git log",
+        "git diff",
+        "pwd",
+        "echo",
+        "whoami"
+    ],
+    "auto_approve": [
+        "python",
+        "pip",
+        "dir",
+        "ls",
+        "git status",
+        "git log",
+        "git diff",
+        "pwd",
+        "echo"
+    ],
+    "ask": [
+        "pip install",
+        "npm install",
+        "git clone",
+        "python script"
+    ],
+    "sensitive": [
+        "del",
+        "rm",
+        "rmdir",
+        "taskkill"
+    ],
+    "blocked": [
+        "format",
+        "shutdown",
+        "restart",
+        "reg delete",
+        "net user",
+        "drop database"
+    ]
+}

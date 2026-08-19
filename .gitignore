@@ -1,0 +1,42 @@
+# Python & Virtual Environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+.venv-1/
+env/
+venv/
+ENV/
+
+# Databases & Local Runtime Data
+data/*.db
+data/indexes/
+*.sqlite
+*.sqlite3
+*.db
+
+# Logs & Runtime Outputs
+logs/
+*.log
+voice/*.wav
+
+# Node / React Frontend
+node_modules/
+apps/web/node_modules/
+apps/web/dist/
+.ds_store
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE & OS Files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Workspace temp files
+workspace/*
+!workspace/.gitkeep

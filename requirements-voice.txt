@@ -1,0 +1,19 @@
+# NEUROCORE v0.4 - Voice I/O Dependencies (Optional)
+# Install with: pip install -r requirements-voice.txt
+# These are only needed if using voice features (/voice command)
+
+# Speech Recognition
+faster-whisper==1.0.1
+
+# Text-to-Speech (Tamil Piper)
+piper-tts==1.2.0
+
+# Audio I/O
+sounddevice==0.4.6
+numpy==1.24.3
+scipy==1.11.4
+
+# Additional audio support
+PyAudio==0.2.13  # May require system audio libraries (PortAudio)
+
+# Windows-specific audio (optional, winsound is built-in on Windows)
