@@ -7,6 +7,7 @@ from core.modes import ModeManager
 from interface.panels import help_panel, model_info, status
 from interface.sounds import SoundEngine
 from interface.tui import NeuroCoreTUI
+from interface.workspace import CommandDeckTUI
 from main import NeuroCoreApp
 
 
@@ -96,6 +97,80 @@ def test_command_palette_and_settings_open():
             await pilot.pause()
             assert app.screen.__class__.__name__ == "SettingsModal"
             await pilot.press("escape")
+
+    import asyncio
+    asyncio.run(exercise())
+
+
+def test_command_deck_mounts_and_navigates():
+    class FakeModel:
+        def health_check(self):
+            return True
+
+    class FakeOrchestrator:
+        model = FakeModel()
+
+        def stream_response(self, text):
+            yield "ok"
+
+    async def exercise():
+        app = CommandDeckTUI(
+            FakeOrchestrator(),
+            {"model": "qwen3:8b", "sound_enabled": False},
+        )
+        async with app.run_test(size=(120, 30)) as pilot:
+            await pilot.pause()
+            assert app.active_key == "dashboard"
+            await pilot.click("#nav-agents")
+            assert app.active_key == "agents"
+            await pilot.press("ctrl+2")
+            assert app.active_key == "chat"
+
+    import asyncio
+    asyncio.run(exercise())
+
+
+def test_command_deck_collapses_context_panels():
+    class FakeModel:
+        def health_check(self):
+            return True
+
+    class FakeOrchestrator:
+        model = FakeModel()
+
+    async def exercise():
+        app = CommandDeckTUI(
+            FakeOrchestrator(),
+            {"model": "qwen3:8b"},
+        )
+        async with app.run_test(size=(60, 24)) as pilot:
+            await pilot.pause()
+            assert not app.query_one("#rail").display
+            assert not app.query_one("#inspector").display
+            assert app.query_one("#command").display
+
+    import asyncio
+    asyncio.run(exercise())
+
+
+def test_command_deck_agents_screen_uses_registry_state():
+    class FakeModel:
+        def health_check(self):
+            return True
+
+    class FakeOrchestrator:
+        model = FakeModel()
+        agent_registry = __import__(
+            "agents.registry", fromlist=["AgentRegistry"]
+        ).AgentRegistry.defaults()
+
+    async def exercise():
+        app = CommandDeckTUI(FakeOrchestrator(), {"model": "qwen3:8b"})
+        async with app.run_test(size=(120, 30)) as pilot:
+            await pilot.click("#nav-agents")
+            body = app.query_one("#canvas-body").renderable
+            assert "NOT CONFIGURED" in str(body)
+            assert "Voice" in str(body)
 
     import asyncio
     asyncio.run(exercise())

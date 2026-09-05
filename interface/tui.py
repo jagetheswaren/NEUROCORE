@@ -267,4 +267,8 @@ class NeuroCoreTUI(App):
 
 def run_tui(orchestrator, settings):
     """Run the full-screen UI and restore terminal state on exit."""
+    if settings.get("v02_ui_enabled", False):
+        from interface.workspace import run_workspace
+        run_workspace(orchestrator, settings)
+        return
     NeuroCoreTUI(orchestrator, settings).run()
