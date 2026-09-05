@@ -79,7 +79,7 @@ def chat_stream_endpoint(
 
     return StreamingResponse(
         event_generator(),
-        media_type="text/event-stream"
+        headers={"content-type": "text/event-stream"}
     )
 
 @router.get("/history")

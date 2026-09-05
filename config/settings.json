@@ -6,6 +6,9 @@
     "workspace": "workspace",
     "command_timeout": 120,
     "logging_level": "INFO",
+    "sound_enabled": false,
+    "sound_volume": 0.2,
+    "reduced_motion": false,
     "server_host": "127.0.0.1",
     "server_port": 8000,
     "safe": [
