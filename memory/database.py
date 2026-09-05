@@ -13,7 +13,7 @@ class MemoryDatabase:
     def __init__(self):
         """Initialize memory database with error handling."""
         try:
-            self.connection = sqlite3.connect(DB_PATH)
+            self.connection = sqlite3.connect(DB_PATH, check_same_thread=False)
             logger.info(f"Connected to memory database: {DB_PATH}")
             self._create_tables()
         except sqlite3.Error as e:

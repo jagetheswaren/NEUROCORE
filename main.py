@@ -1,18 +1,54 @@
 import logging
 import os
+import sys
 from rich.console import Console
-from rich.panel import Panel
-from rich.table import Table
+from rich.live import Live
+from rich.markdown import Markdown
 
 from core.config import load_settings
 from core.modes import MODES
 from core.orchestrator import Orchestrator
-from voice.speech import SpeechRecognizer
-from voice.tts import TextToSpeech
+from interface.animations import startup, thinking
+from interface.panels import banner, help_panel, message as render_message, model_info, status
+from interface.theme import AI, ERROR, PRIMARY, SUCCESS, WARNING
 
 
 console = Console()
 logger = logging.getLogger(__name__)
+
+
+def run_doctor():
+    """Print real environment and local-service diagnostics without starting the UI."""
+    import importlib.util
+    import requests
+
+    settings = load_settings()
+    dependency_names = ("rich", "textual", "requests", "fastapi", "pydantic", "yaml")
+    dependencies_ok = all(importlib.util.find_spec(name) for name in dependency_names)
+    ollama_online = False
+    model_ready = False
+    try:
+        response = requests.get(
+            f"{settings.get('ollama_url', 'http://127.0.0.1:11434')}/api/tags",
+            timeout=5,
+        )
+        response.raise_for_status()
+        ollama_online = True
+        models = {item.get("name") for item in response.json().get("models", [])}
+        configured_model = settings.get("model", "qwen3:8b")
+        model_ready = configured_model in models
+    except (requests.RequestException, ValueError, KeyError):
+        configured_model = settings.get("model", "qwen3:8b")
+
+    console.print("[bold cyan]NEUROCORE ENVIRONMENT[/bold cyan]")
+    console.print(f"Python       {'OK' if sys.version_info[:2] == (3, 11) else 'WARN'} · {sys.version.split()[0]}")
+    console.print(f"Dependencies {'OK' if dependencies_ok else 'FAIL'}")
+    console.print(f"Textual      {'OK' if importlib.util.find_spec('textual') else 'FAIL'}")
+    console.print(f"Ollama       {'ONLINE' if ollama_online else 'OFFLINE'}")
+    console.print(f"Model        {configured_model} · {'READY' if model_ready else 'NOT DETECTED'}")
+    console.print(f"Sound        {'ENABLED' if settings.get('sound_enabled', False) else 'DISABLED'}")
+    console.print("Tests        run `python -m pytest -q` to verify")
+    return 0 if dependencies_ok else 1
 
 
 def setup_logging(settings):
@@ -69,6 +105,9 @@ class NeuroCoreApp:
         self.tts = None
 
     def initialize_voice(self):
+        from voice.speech import SpeechRecognizer
+        from voice.tts import TextToSpeech
+
         if self.speech is None:
             self.speech = SpeechRecognizer()
         if self.tts is None:
@@ -78,41 +117,13 @@ class NeuroCoreApp:
         return self.modes.get()
 
     def show_banner(self):
-        console.print(
-            Panel.fit(
-                "[bold cyan]NEUROCORE v0.4[/bold cyan]\n"
-                "One Brain • Modes • Memory • Voice\n"
-                f"Model: {self.settings.get('model', 'qwen3:8b')}\n\n"
-                "[yellow]Commands:[/yellow] "
-                "/friend /plan /terminal /build /voice "
-                "/mode /remember /memory /clear /help /exit",
-                title="NEUROCORE"
-            )
-        )
+        online = self.orchestrator.model.health_check()
+        banner(console, self.settings, online)
+        startup(console, ["Core system", "Configuration", "Security", "Ollama", "Model", "CLI", "System ready"])
+        console.print(f"\n[{PRIMARY}]Type /help for commands.[/]")
 
     def show_help(self):
-        table = Table(title="NEUROCORE Commands")
-        table.add_column("Command")
-        table.add_column("Purpose")
-
-        table.add_row("/friend", "Switch to Friend mode (chat)")
-        table.add_row("/plan", "Switch to Plan mode (no changes)")
-        table.add_row("/terminal", "Switch to Terminal mode ($ to run)")
-        table.add_row("/build", "Switch to Build mode")
-        table.add_row("/voice", "Start voice conversation")
-        table.add_row("/mode", "Show current mode")
-        table.add_row("/remember <info>", "Save long-term memory")
-        table.add_row("/memory", "List memories")
-        table.add_row("/clear", "Clear conversation history")
-        table.add_row("/help", "Show this help")
-        table.add_row("exit", "Quit NEUROCORE")
-
-        console.print(table)
-
-        console.print(
-            "\n[yellow]Terminal mode:[/yellow] type "
-            "[bold]$ dir[/bold] to run a command safely."
-        )
+        help_panel(console)
 
     def voice_mode(self):
         self.initialize_voice()
@@ -211,8 +222,16 @@ class NeuroCoreApp:
         if lower in {"exit", "quit"}:
             return "exit"
 
-        if lower in {"/help", "/?"}:
+        if lower in {"/help", "help", "/?"}:
             self.show_help()
+            return "continue"
+
+        if lower in {"/status", "status"}:
+            status(console, self.settings, self.orchestrator.model.health_check(), self.current_mode())
+            return "continue"
+
+        if lower in {"/model", "model"}:
+            model_info(console, self.settings, self.orchestrator.model.health_check())
             return "continue"
 
         if lower == "/voice":
@@ -267,11 +286,9 @@ class NeuroCoreApp:
 
             return "continue"
 
-        if lower in {"/clear", "/reset"}:
+        if lower in {"/clear", "clear", "/reset"}:
             self.orchestrator.history.clear()
-            console.print(
-                "[yellow]Conversation history cleared.[/yellow]"
-            )
+            console.print(f"[{SUCCESS}]✓ Conversation history cleared.[/]")
             return "continue"
 
         return None
@@ -307,16 +324,15 @@ class NeuroCoreApp:
                 if action == "continue":
                     continue
 
-                answer = self.orchestrator.run(
-                    message,
-                    mode=mode.name
-                )
-
-                console.print(
-                    f"\n[bold {mode.color}]NEUROCORE "
-                    f"({mode.label}) > [/bold {mode.color}]"
-                    f"{answer}"
-                )
+                render_message(console, "YOU", message, SUCCESS)
+                with thinking(console):
+                    tokens = self.orchestrator.stream_response(message, mode=mode.name)
+                    response = ""
+                    with Live("", console=console, refresh_per_second=12, transient=True) as live:
+                        for token in tokens:
+                            response += token
+                            live.update(Markdown(response))
+                render_message(console, f"NEUROCORE · {mode.label}", response, AI)
 
             except KeyboardInterrupt:
 
@@ -328,10 +344,19 @@ class NeuroCoreApp:
 
             except Exception as error:
 
-                console.print(
-                    f"[bold red]Error:[/bold red] {error}"
-                )
+                logger.exception("CLI error")
+                console.print(f"[{ERROR}]✕ {error}[/]")
 
 
 if __name__ == "__main__":
-    NeuroCoreApp().run()
+    if "--doctor" in sys.argv:
+        raise SystemExit(run_doctor())
+    app = NeuroCoreApp()
+    try:
+        from interface.tui import run_tui
+    except ImportError:
+        run_tui = None
+    if run_tui is None:
+        app.run()
+    else:
+        run_tui(app.orchestrator, app.settings)

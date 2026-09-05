@@ -7,6 +7,11 @@ from memory.database import MemoryDatabase
 from memory.retrieval import retrieve
 from knowledge.retrieval import KnowledgeRetriever
 from tools.terminal import TerminalTool
+from agents.registry import AgentRegistry
+from core.events import EventBus
+from core.executor import TaskExecutor
+from core.planner import Planner
+from core.verifier import Verifier
 
 
 logger = logging.getLogger(__name__)
@@ -40,7 +45,22 @@ class Orchestrator:
         )
 
         self.history = []
+        self.events = EventBus()
+        self.agent_registry = AgentRegistry.defaults(self)
+        self.planner = Planner(self.events)
+        self.executor = TaskExecutor(self.agent_registry, self.events)
+        self.verifier = Verifier(self.events)
+        self.events.publish("CORE_STARTED", model=self.settings.get("model", "qwen3:8b"))
         logger.info("Orchestrator initialized successfully")
+
+    def create_task(self, objective, steps=None):
+        """Create a shared task object without executing consequential work."""
+        return self.planner.create_task(objective, steps)
+
+    def execute_task(self, task):
+        """Execute a planned task through the registered agent boundary."""
+        result = self.executor.execute(task)
+        return result, self.verifier.verify(task, result)
 
     def run(self, message, mode=None):
         try:

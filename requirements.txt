@@ -3,6 +3,7 @@
 
 # CLI & UI
 rich==13.7.0
+textual==0.58.1
 
 # API & HTTP
 requests==2.31.0
@@ -14,6 +15,7 @@ uvicorn==0.27.0
 websockets==12.0
 pyyaml==6.0.1
 pydantic==2.5.3
+python-multipart==0.0.9
 
 # Audio & Voice (optional, see requirements-voice.txt)
 # Install voice dependencies with: pip install -r requirements-voice.txt
@@ -25,4 +27,3 @@ pydantic==2.5.3
 # pylint==3.0.3
 
 # Note: SQLite3 is built-in (Python standard library)
-

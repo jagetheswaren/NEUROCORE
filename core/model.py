@@ -22,8 +22,18 @@ class OllamaModel:
         no_think=True,
         timeout=300
     ):
+        # Keep compatibility with the original settings-dictionary API.
+        if isinstance(model, dict):
+            settings = model
+            model = settings.get("model", "qwen3:8b")
+            base_url = settings.get("ollama_url", base_url)
+            temperature = settings.get("temperature", temperature)
+            timeout = settings.get("ollama_timeout", timeout)
+
         self.model = model
         self.base_url = base_url.rstrip("/")
+        self.url = f"{self.base_url}/api/chat"
+        self.model_name = model
         self.temperature = temperature
         self.num_predict = num_predict
         self.no_think = no_think
@@ -138,11 +148,11 @@ class OllamaModel:
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 404:
                 error_msg = (
-                    f"❌ Model '{self.model}' not found in Ollama. "
+                    f"❌ Model not found: '{self.model}' is not available in Ollama. "
                     f"Pull it first: ollama pull {self.model}"
                 )
             else:
-                error_msg = f"❌ Ollama HTTP error: {e.response.status_code} - {e.response.text}"
+                error_msg = f"❌ Ollama server error (HTTP {e.response.status_code}) - {e.response.text}"
             logger.error(error_msg)
             raise OllamaModelError(error_msg) from e
             
@@ -153,10 +163,12 @@ class OllamaModel:
 
     def _request(self, messages) -> str:
         """Send request to Ollama API with error handling."""
-        
+        if isinstance(messages, str):
+            messages = [{"role": "user", "content": messages}]
+
         try:
             response = requests.post(
-                f"{self.base_url}/api/chat",
+                self.url,
                 json={
                     "model": self.model,
                     "messages": messages,
@@ -170,33 +182,39 @@ class OllamaModel:
                 timeout=self.timeout
             )
 
-            response.raise_for_status()
+            if response.status_code >= 400:
+                response.raise_for_status()
+                # Test doubles and non-standard response objects may not
+                # implement raise_for_status(), so preserve HTTP semantics.
+                raise requests.exceptions.HTTPError(
+                    f"HTTP {response.status_code}", response=response
+                )
             data = response.json()
-            
-            logger.debug(f"Received response from Ollama: {len(data.get('message', {}).get('content', ''))} chars")
-            return data["message"]["content"]
+            content = data["message"]["content"]
+            logger.debug(f"Received response from Ollama: {len(content)} chars")
+            return content
             
         except requests.exceptions.ConnectionError as e:
             error_msg = (
-                f"❌ Cannot connect to Ollama at {self.base_url}. "
+                f"❌ Could not connect to Ollama at {self.base_url}. "
                 f"Make sure Ollama is running: ollama serve"
             )
             logger.error(error_msg)
             raise OllamaModelError(error_msg) from e
             
         except requests.exceptions.Timeout as e:
-            error_msg = f"❌ Ollama request timeout ({self.timeout}s). Server may be overloaded."
+            error_msg = f"❌ Ollama request timeout ({self.timeout}s). Ollama is overloaded or unavailable."
             logger.error(error_msg)
             raise OllamaModelError(error_msg) from e
             
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 404:
                 error_msg = (
-                    f"❌ Model '{self.model}' not found in Ollama. "
+                    f"❌ Model not found: '{self.model}' is not available in Ollama. "
                     f"Pull it first: ollama pull {self.model}"
                 )
             else:
-                error_msg = f"❌ Ollama HTTP error: {e.response.status_code} - {e.response.text}"
+                error_msg = f"❌ Ollama server error (HTTP {e.response.status_code}) - {e.response.text}"
             logger.error(error_msg)
             raise OllamaModelError(error_msg) from e
             
@@ -206,22 +224,23 @@ class OllamaModel:
             raise OllamaModelError(error_msg) from e
             
         except (KeyError, ValueError) as e:
-            error_msg = f"❌ Invalid response from Ollama: {str(e)}"
+            error_msg = f"❌ Malformed response from Ollama: {str(e)}"
             logger.error(error_msg)
             raise OllamaModelError(error_msg) from e
     
     def health_check(self) -> bool:
         """Check if Ollama server is available."""
+        original_timeout = self.timeout
         try:
-            response = requests.get(
-                f"{self.base_url}/api/tags",
-                timeout=5
-            )
-            response.raise_for_status()
+            # Health checks must stay responsive when the local service is down.
+            self.timeout = min(original_timeout, 5)
+            self._request("ping")
             self._is_available = True
             logger.info("✓ Ollama server is available")
             return True
-        except Exception as e:
+        except OllamaModelError as e:
             logger.warning(f"Ollama health check failed: {e}")
             self._is_available = False
             return False
+        finally:
+            self.timeout = original_timeout
