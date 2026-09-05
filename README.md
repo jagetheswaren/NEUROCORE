@@ -1,5 +1,10 @@
 # NEUROCORE
 
+[![Tests](https://img.shields.io/badge/tests-97%20passed-42f58d)](https://github.com/jagetheswaren/NEUROCORE/actions)
+[![Python](https://img.shields.io/badge/python-3.11%2B-3776ab)](https://www.python.org/)
+[![Ollama](https://img.shields.io/badge/LLM-Ollama-black)](https://ollama.com/)
+[![Status](https://img.shields.io/badge/status-V0.2%20foundation-00d9ff)](https://github.com/jagetheswaren/NEUROCORE/pulls)
+
 > A local-first personal AI operating layer built around controlled missions, shared agent capabilities, persistent context, tools, voice, and verification.
 
 NEUROCORE is designed to do more than answer questions. It runs on the user's own machine, uses a local LLM through Ollama, maintains context, and can eventually interact with files, projects, knowledge, and tools when explicitly allowed.
@@ -7,6 +12,13 @@ NEUROCORE is designed to do more than answer questions. It runs on the user's ow
 The core principle is:
 
 > **The AI can understand, plan, and propose. The user remains in control of consequential actions.**
+
+## GitHub
+
+- Repository: [jagetheswaren/NEUROCORE](https://github.com/jagetheswaren/NEUROCORE)
+- Current development PR: [#1 — V0.2 Agent Core Foundation and Command Deck](https://github.com/jagetheswaren/NEUROCORE/pull/1)
+- Stable V0.1 tag: [`NEUROCORE-V0.1-STABLE`](https://github.com/jagetheswaren/NEUROCORE/releases/tag/NEUROCORE-V0.1-STABLE)
+- Documentation index: [`docs/`](./docs)
 
 ## Current status
 
